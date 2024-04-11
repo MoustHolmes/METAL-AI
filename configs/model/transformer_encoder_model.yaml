@@ -1,0 +1,38 @@
+_target_: src.models.metalAI_module.MetalAILitModule
+
+model:
+  _target_: src.models.components.Transformer_encoder_model.simple_transformer_encoder_model
+  csf_encoder: #${CSF_encoders.simple_csf_encoder}  # Reference the entire encoder config
+    _target_: src.models.components.CSF_encoders.simple_CSF_encoder #/home/projects/ku_00258/people/mouhol/METAL-AI/src/models/components/CSF_encoder.py
+    output_size: 32
+  d_model: 32 #${model.CSF_encoders.simple_csf_encoder}  # Directly use the encoder's output_size
+  nhead: 8
+  dim_forward: 64
+  num_layers: 6
+  output_size: 1
+  dropout: 0.5 
+
+loss_fn:
+  _target_: src.loss_functions.loss_function_wrappers.EffectSumLosswrapper # torch.nn.MSELoss
+  loss_function: 
+    _target_: torch.nn.MSELoss
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+
+
+# compile model for faster training with pytorch 2.0
+compile: false
+
+
