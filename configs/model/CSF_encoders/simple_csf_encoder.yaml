@@ -1,0 +1,2 @@
+_target_: src.models.csf_encoder.simple_CSF_encoder
+output_size: 32
