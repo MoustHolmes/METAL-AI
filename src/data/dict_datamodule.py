@@ -97,9 +97,8 @@ class DictDataModule(LightningDataModule):
 
         Do not use it to assign state (self.x = y).
         """
-        with open(self.hparams.data_dir, 'rb') as file:
+        with open(self.hparams.data_dir, "rb") as file:
             self.data_dict = pickle.load(file)
-
 
     def setup(self, stage: Optional[str] = None) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -117,11 +116,13 @@ class DictDataModule(LightningDataModule):
                 raise RuntimeError(
                     f"Batch size ({self.hparams.batch_size}) is not divisible by the number of devices ({self.trainer.world_size})."
                 )
-            self.batch_size_per_device = self.hparams.batch_size // self.trainer.world_size
+            self.batch_size_per_device = (
+                self.hparams.batch_size // self.trainer.world_size
+            )
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            
+
             self.data_train, self.data_val, self.data_test = random_split(
                 dataset=SimpleDictDataset(data_dict=self.data_dict),
                 lengths=self.hparams.train_val_test_split,
@@ -140,6 +141,7 @@ class DictDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=True,
+            persistent_workers=True,
         )
 
     def val_dataloader(self) -> DataLoader[Any]:
@@ -154,6 +156,7 @@ class DictDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
+            persistent_workers=True,
         )
 
     def test_dataloader(self) -> DataLoader[Any]:
