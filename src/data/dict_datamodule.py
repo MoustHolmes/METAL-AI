@@ -8,8 +8,41 @@ from torchvision.transforms import transforms
 
 import pickle
 
-from src.data.components.dict_dataset import SimpleDictDataset, dict_collate_fn
+from src.data.components.datasets import GroupedDictDataset
+from src.data.components.samplers import GroupedBatchSampler
+from src.data.components.collate_fns import dict_collate_fn
 
+def split_data_dict(data_dict, validation_percentage=0.05):
+    # Flatten the data_dict to a list of tuples: (ion_key, asf_key, excitations_length)
+    flat_data = [
+        (ion_key, asf_key, len(data_dict[ion_key][asf_key]["excitations"]))
+        for ion_key in data_dict.keys()
+        for asf_key in data_dict[ion_key].keys()
+    ]
+
+    # Sort by the length of excitations in descending order
+    flat_data.sort(key=lambda x: x[2], reverse=True)
+
+    # Determine the number of validation data points
+    validation_size = int(len(flat_data) * validation_percentage)
+
+    # Create the validation and training datasets
+    validation_data = {}
+    training_data = {}
+
+    # Add the top 5% to the validation set
+    for ion_key, asf_key, _ in flat_data[:validation_size]:
+        if ion_key not in validation_data:
+            validation_data[ion_key] = {}
+        validation_data[ion_key][asf_key] = data_dict[ion_key][asf_key]
+
+    # Add the remaining 95% to the training set
+    for ion_key, asf_key, _ in flat_data[validation_size:]:
+        if ion_key not in training_data:
+            training_data[ion_key] = {}
+        training_data[ion_key][asf_key] = data_dict[ion_key][asf_key]
+
+    return training_data, validation_data
 
 class DictDataModule(LightningDataModule):
     """`LightningDataModule` for the MNIST dataset.
@@ -58,6 +91,7 @@ class DictDataModule(LightningDataModule):
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
+        persistent_workers: bool = False,
     ) -> None:
         """Initialize a `HDF5DataModule`.
 
@@ -81,14 +115,6 @@ class DictDataModule(LightningDataModule):
 
         self.batch_size_per_device = batch_size
 
-    # @property
-    # def num_classes(self) -> int:
-    #     """Get the number of classes.
-
-    #     :return: The number of MNIST classes (10).
-    #     """
-    #     return 10
-
     def prepare_data(self) -> None:
         """Download data if needed. Lightning ensures that `self.prepare_data()` is called only
         within a single process on CPU, so you can safely add your downloading logic within. In
@@ -99,6 +125,7 @@ class DictDataModule(LightningDataModule):
         """
         with open(self.hparams.data_dir, "rb") as file:
             self.data_dict = pickle.load(file)
+        self.data_dict_train, self.data_dict_val = split_data_dict(self.data_dict)
 
     def setup(self, stage: Optional[str] = None) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -119,15 +146,14 @@ class DictDataModule(LightningDataModule):
             self.batch_size_per_device = (
                 self.hparams.batch_size // self.trainer.world_size
             )
-
+        
         # load and split datasets only if not loaded already
-        if not self.data_train and not self.data_val and not self.data_test:
-
-            self.data_train, self.data_val, self.data_test = random_split(
-                dataset=SimpleDictDataset(data_dict=self.data_dict),
-                lengths=self.hparams.train_val_test_split,
-                generator=torch.Generator().manual_seed(42),
-            )
+        if not self.data_train:
+            self.data_train = GroupedDictDataset(data_dict=self.data_dict_train)
+        if not self.data_val:
+            self.data_val = GroupedDictDataset(data_dict=self.data_dict_val)
+        if not self.data_test:
+            self.data_test = GroupedDictDataset(data_dict=self.data_dict)
 
     def train_dataloader(self) -> DataLoader[Any]:
         """Create and return the train dataloader.
@@ -136,12 +162,10 @@ class DictDataModule(LightningDataModule):
         """
         return DataLoader(
             dataset=self.data_train,
-            collate_fn=dict_collate_fn,
-            batch_size=self.batch_size_per_device,
+            batch_sampler=GroupedBatchSampler(self.data_train, batch_size =self.batch_size_per_device),
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            shuffle=True,
-            persistent_workers=True,
+            persistent_workers=self.hparams.persistent_workers,
         )
 
     def val_dataloader(self) -> DataLoader[Any]:
@@ -151,12 +175,10 @@ class DictDataModule(LightningDataModule):
         """
         return DataLoader(
             dataset=self.data_val,
-            collate_fn=dict_collate_fn,
-            batch_size=self.batch_size_per_device,
+            batch_sampler=GroupedBatchSampler(self.data_val, batch_size =self.batch_size_per_device),
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            shuffle=False,
-            persistent_workers=True,
+            persistent_workers=self.hparams.persistent_workers,
         )
 
     def test_dataloader(self) -> DataLoader[Any]:
@@ -166,11 +188,10 @@ class DictDataModule(LightningDataModule):
         """
         return DataLoader(
             dataset=self.data_test,
-            collate_fn=dict_collate_fn,
-            batch_size=self.batch_size_per_device,
+            batch_sampler=GroupedBatchSampler(self.data_test, batch_size =self.batch_size_per_device),
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            shuffle=False,
+            persistent_workers=self.hparams.persistent_workers,
         )
 
     def teardown(self, stage: Optional[str] = None) -> None:

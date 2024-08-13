@@ -1,5 +1,6 @@
 from typing import Any, Dict, Tuple
-
+import pickle
+import copy
 import torch
 from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
@@ -68,14 +69,16 @@ class MetalAILitModule(LightningModule):
         self.loss_fn = loss_fn  # torch.nn.MSELoss()
         # print(self.loss_fn)
         # metric objects for calculating and averaging accuracy across batches
-        # self.train_acc = Accuracy(task="multiclass", num_classes=10)
-        # self.val_acc = Accuracy(task="multiclass", num_classes=10)
-        # self.test_acc = Accuracy(task="multiclass", num_classes=10)
+        self.train_acc = Accuracy(task="binary")
+        self.val_acc = Accuracy(task="binary")
+        self.test_acc = Accuracy(task="binary")
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
         self.test_loss = MeanMetric()
+
+        self.pred_dict = {}
 
         # for tracking best so far validation accuracy
         # self.val_acc_best = MaxMetric()
@@ -93,7 +96,7 @@ class MetalAILitModule(LightningModule):
         # by default lightning executes validation step sanity checks before training starts,
         # so it's worth to make sure validation metrics don't store results from these checks
         self.val_loss.reset()
-        # self.val_acc.reset()
+        self.val_acc.reset()
         # self.val_acc_best.reset()
 
     def model_step(
@@ -112,9 +115,8 @@ class MetalAILitModule(LightningModule):
         preds = self.forward(batch)
         targets = batch["converged"]
         mask = batch["converged_mask"]
-
-        loss = self.loss_fn(preds, targets, mask)
-        return loss, preds, targets
+        loss = self.loss_fn(preds[mask], targets[mask].float())
+        return loss, preds[mask], targets[mask]
 
     def training_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
@@ -130,11 +132,11 @@ class MetalAILitModule(LightningModule):
 
         # update and log metrics
         self.train_loss(loss)
-        # self.train_acc(preds, targets)
+        self.train_acc(preds, targets)
         self.log(
-            "train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True
+            "train/loss", self.train_loss, on_step=True, on_epoch=False, prog_bar=True
         )
-        # self.log("train/acc", self.train_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/acc", self.train_acc, on_step=False, on_epoch=True, prog_bar=True)
 
         # return loss or backpropagation will fail
         return loss
@@ -156,9 +158,10 @@ class MetalAILitModule(LightningModule):
 
         # update and log metrics
         self.val_loss(loss)
-        # self.val_acc(preds, targets)
-        self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        # self.log("val/acc", self.val_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.val_acc(preds, targets)
+
+        self.log("val/loss", self.val_loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("val/acc", self.val_acc, on_step=True, on_epoch=True, prog_bar=True)
 
     def on_validation_epoch_end(self) -> None:
         "Lightning hook that is called when a validation epoch ends."
@@ -182,15 +185,50 @@ class MetalAILitModule(LightningModule):
 
         # update and log metrics
         self.test_loss(loss)
-        # self.test_acc(preds, targets)
-        self.log(
-            "test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True
-        )
-        # self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.test_acc(preds, targets)
+
+        self.log("test/loss", self.test_loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("test/acc", self.test_acc, on_step=True, on_epoch=True, prog_bar=True)
+        # data_dict = self.trainer.datamodule.data_dict
+        # print(batch)
+        # print(len(batch["ion_key"]))
+        # print(batch["asf_key"])
+        # print(batch["asf_key"].shape)
+        for i in range(len(batch["n_protons"])):
+            ion_key = (batch["n_protons"][i].item(), batch["n_electrons"][i].item())
+            excitations_tuple = tuple(map(tuple, batch["excitations"][i].cpu().numpy()))
+            # print(ion_key, excitations_tuple)
+            # print()
+            # print(preds[i].cpu().numpy())
+            if ion_key not in self.pred_dict:
+                self.pred_dict[ion_key] = {}
+            
+            if excitations_tuple not in self.pred_dict[ion_key]:
+                self.pred_dict[ion_key][excitations_tuple] = {}
+            # Store the predictions using the excitations_tuple as the key
+            # print()
+            # print(preds.shape)
+            # print(targets.shape)
+            # print(preds[batch["converged_mask"]])
+            # print(targets[batch["converged_mask"]])
+            # print(batch["converged_mask"][i])
+            # print()
+            self.pred_dict[ion_key][excitations_tuple]['preds'] = copy.deepcopy(preds[i].cpu().numpy())
+            self.pred_dict[ion_key][excitations_tuple]['targets'] = copy.deepcopy(targets[i].cpu().numpy())
+            self.pred_dict[ion_key][excitations_tuple]['mask'] = copy.deepcopy(batch["converged_mask"][i].cpu().numpy())
+
+            # ion_key = batch["ion_key"][i]  # Directly access the key without .item()
+            # asf_key = batch["asf_key"][i]
+            # # print(ion_key, asf_key)
+            # data_dict[ion_key][asf_key]["predictions"] = preds[i].cpu().numpy()
+
 
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
-        pass
+        
+        with open("/Users/moustholmes/Projects/METAL-AI/data/data_dict_Li-Rh_converged_only_restults.pkl", 'wb') as f:
+            pickle.dump(self.pred_dict, f)
+
 
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit (train + validate), validate,

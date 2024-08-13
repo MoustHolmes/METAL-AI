@@ -26,9 +26,14 @@ pandas          # for data manipulation
 matplotlib      # for plotting
 numpy           # for numerical operations
 scipy           # for scientific computing
+seaborn         # for additional plotting
 
 dask            # for parallel computing
 tqdm            # for progress bars
 dataclasses     # for dataclasses in python 3.6
 h5py            # for saving/loading h5 files
 distributed     # for distributed computing
+
+ipywidgets      # for interactive widgets in jupyter notebooks
+networkx        # for graph operations
+pygraphviz      # for graph visualization

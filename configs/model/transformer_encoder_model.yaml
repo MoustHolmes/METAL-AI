@@ -13,9 +13,11 @@ model:
   dropout: 0.5 
 
 loss_fn:
-  _target_: src.loss_functions.loss_function_wrappers.EffectSumLosswrapper # torch.nn.MSELoss
-  loss_function: 
-    _target_: torch.nn.MSELoss
+  _target_: torch.nn.CrossEntropyLoss
+  reduction: sum
+  # _target_: src.loss_functions.loss_function_wrappers.ConvergedLossWrapper # torch.nn.MSELoss
+  # loss_function: 
+  #   _target_: torch.nn.CrossEntropyLoss
 
 optimizer:
   _target_: torch.optim.Adam
@@ -34,5 +36,4 @@ scheduler:
 
 # compile model for faster training with pytorch 2.0
 compile: false
-
 
