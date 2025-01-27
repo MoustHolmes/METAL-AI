@@ -11,6 +11,6 @@ wandb:
   log_model: False # upload lightning ckpts
   prefix: "" # a string to put at the beginning of metric keys
   entity: "MoustHolmes" # set to name of your wandb team
-  group: "MNIST tests" # set to name of your wandb group
-  tags: [test]
+  group: "" # set to name of your wandb group
+  tags: ["convergence", "length_sorted_dataset"]
   job_type: ""

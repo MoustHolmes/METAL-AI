@@ -3,20 +3,27 @@ defaults:
   - early_stopping
   - model_summary
   - rich_progress_bar
+  # - save_test_inference_to_dict
+  # - metric_logger
   - _self_
 
 model_checkpoint:
   dirpath: ${paths.output_dir}/checkpoints
   filename: "epoch_{epoch:03d}"
   monitor: "val/loss"
-  mode: "max"
+  mode: "min"
   save_last: True
   auto_insert_metric_name: False
 
 early_stopping:
   monitor: "val/loss"
-  patience: 100
-  mode: "max"
+  patience: 80
+  mode: "min"
 
 model_summary:
   max_depth: -1
+
+# save_test_inference_to_dict:
+#   save_dir: ${paths.log_dir}
+#   filename: "test_inference"
+

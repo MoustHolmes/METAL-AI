@@ -1,37 +1,51 @@
+# transformer_encoder_model.yaml
+
+defaults:
+  - scheduler: cosine_annealing_warm_restarts
+
 _target_: src.models.metalAI_module.MetalAILitModule
+
+target_name: 'converged'
 
 model:
   _target_: src.models.components.Transformer_encoder_model.simple_transformer_encoder_model
   csf_encoder: #${CSF_encoders.simple_csf_encoder}  # Reference the entire encoder config
-    _target_: src.models.components.CSF_encoders.simple_CSF_encoder #/home/projects/ku_00258/people/mouhol/METAL-AI/src/models/components/CSF_encoder.py
-    output_size: 32
+    _target_: src.models.components.CSF_encoders.simple_CSF_encoder 
+    output_size: 4
   d_model: 32 #${model.CSF_encoders.simple_csf_encoder}  # Directly use the encoder's output_size
-  nhead: 8
-  dim_forward: 64
-  num_layers: 6
+  nhead: 2
+  dim_forward: 16
+  num_layers: 4
   output_size: 1
-  dropout: 0.5 
+  dropout: 0.00
+  output_activation:
+    _target_: torch.nn.Sigmoid
 
 loss_fn:
-  _target_: torch.nn.CrossEntropyLoss
-  reduction: sum
-  # _target_: src.loss_functions.loss_function_wrappers.ConvergedLossWrapper # torch.nn.MSELoss
-  # loss_function: 
-  #   _target_: torch.nn.CrossEntropyLoss
+  _target_: src.models.components.loss_function_wrappers.LossFuncMaskWrapper # torch.nn.MSELoss
+  loss_fn: 
+    _target_: torch.nn.BCELoss
+    reduction: sum
 
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true
   lr: 0.001
-  weight_decay: 0.0
+  weight_decay: 0.01
 
-scheduler:
-  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
-  _partial_: true
-  mode: min
-  factor: 0.1
-  patience: 10
+# scheduler: cosine_annealing_warm_restarts
+  # _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+  # _partial_: true
+  # T_0: 5
+  # T_mult: 2
+  # eta_min: 0.
 
+# scheduler:
+#   _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+#   _partial_: true
+#   mode: min
+#   factor: 0.1
+#   patience: 3
 
 
 # compile model for faster training with pytorch 2.0

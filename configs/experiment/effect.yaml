@@ -1,0 +1,44 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=effect
+
+defaults:
+  - override /data: dict_dataset
+  - override /model: transformer_encoder_model
+  - override /callbacks: default
+  - override /trainer: default
+  - override /model/scheduler: reduce_on_plateau
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["effect", "transformer_encoder"]
+
+seed: 12345
+
+data:
+  remove_nan_effect: True
+  shuffle: True
+  train_val_splitter:
+    _target_: src.data.components.data_utils.RandomTrainValSplitter
+    validation_percentage : 0.15
+
+trainer:
+  min_epochs: 1 #28 #256
+  max_epochs: 1 #28 #256
+
+model:
+  loss_fn:
+    _target_: src.models.components.loss_function_wrappers.LossFuncMaskWrapper # torch.nn.MSELoss
+    loss_fn: 
+      _target_: torch.nn.L1Loss
+      reduction: sum
+  target_name: "effect"
+  model:
+    output_activation: 
+      _target_: torch.nn.ReLU
+
+# callbacks:
+#   - metric_logger
+#   - save_test_inference_to_dict

@@ -1,0 +1,2 @@
+metric_logger:
+  _target_: src.callbacks.metric_loggers.RegressionMetricsLogger

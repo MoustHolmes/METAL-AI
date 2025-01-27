@@ -1,0 +1,5 @@
+_target_: torch.optim.lr_scheduler.LinearLR
+_partial_: true
+mode: min
+factor: 0.01
+patience: 30

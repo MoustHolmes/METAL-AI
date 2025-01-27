@@ -1,0 +1,6 @@
+save_test_inference_to_dict:
+  _target_: src.callbacks.save_test_inference_to_dict.SaveTestInferenceToDict
+  save_dir: ${paths.log_dir}
+  filename: "test_inference"
+
+    

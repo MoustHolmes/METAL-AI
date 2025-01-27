@@ -1,0 +1,142 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=effect_gaussian_nll
+
+defaults:
+  - override /data: dict_dataset
+  - override /model: transformer_encoder_model
+  - override /callbacks: default
+  - override /trainer: default
+  - override /model/scheduler: cosine_annealing_warm_restarts
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["overfit", "single_ion","converge"]
+
+seed: 12345
+
+data:
+  batch_size: 32
+  shuffle: True
+  remove_nan_effect: True
+  train_val_splitter:
+    _target_: src.data.components.data_utils.TripleTrainValSplitter
+    validation_percentage: 0.05
+    ASF_size_percentage: 0.03
+    include_ion:
+    - [20,20]
+    - [21,20]
+    - [22,20]
+    - [23,20]
+    - [21,21]
+    - [22,21]
+    - [23,21]
+    - [24,21]
+    - [22,22]
+    # - [23,22]
+    - [24,22]
+    - [25,22]
+    - [23,23]
+    - [24,23]
+    - [25,23]
+    - [26,23]
+    - [24,24]
+    - [25,24]
+    - [26,24]
+    - [27,24]
+    - [25,25]
+    - [26,25]
+    - [27,25]
+    - [28,25]
+    - [26,26]
+    - [27,26]
+    - [28,26]
+    - [29,26]
+    - [27,27]
+    - [28,27]
+    - [29,27]
+    - [30,27]
+    - [28,28]
+    - [29,28]
+    - [30,28]
+    - [31,28]
+    - [29,29]
+    - [30,29]
+    - [31,29]
+    - [32,29]
+    - [30,30]
+    - [31,30]
+    - [32,30]
+    - [33,30]
+    - [31,31]
+    - [32,31]
+    - [33,31]
+    - [34,31]
+    - [32,32]
+    - [33,32]
+    - [34,32]
+    - [35,32]
+    - [33,33]
+    - [34,33]
+    - [35,33]
+    - [36,33]
+    - [34,34]
+    - [35,34]
+    - [36,34]
+    - [37,34]
+    - [35,35]
+    - [36,35]
+    - [37,35]
+    - [38,35]
+    unseen_ion: 
+    - [23,22]
+    - [34,33]
+    remove_nan_effect: True
+
+trainer:
+  min_epochs: 2000
+  max_epochs: 10000
+
+model:
+  loss_fn:
+    _target_: src.models.components.loss_function_wrappers.LossFuncMaskWrapper # torch.nn.MSELoss
+    loss_fn: 
+      _target_: torch.nn.L1Loss
+      reduction: sum
+  target_name: "effect"
+
+  model:
+    output_activation: 
+      _target_: torch.nn.ReLU
+    output_size: 1
+    d_model: 32 #${model.CSF_encoders.simple_csf_encoder}  # Directly use the encoder's output_size
+    nhead: 4
+    dim_forward: 16
+    num_layers: 16
+
+  optimizer: 
+    _target_: torch.optim.Adam
+    _partial_: true
+    lr: 0.0005
+    weight_decay: 0.001
+
+  scheduler:
+    _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+    _partial_: true
+    T_0: 20
+    T_mult: 2
+    eta_min: 0.0001
+  # scheduler:
+  #   _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+  #   _partial_: true
+  #   T_0: 30
+  #   T_mult: 1
+  #   eta_min: 0.
+
+callbacks:
+  metric_logger:
+    _target_: src.callbacks.metric_loggers.RegressionMetricsLogger
+  early_stopping:
+    patience: 900

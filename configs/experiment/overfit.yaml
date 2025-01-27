@@ -1,0 +1,96 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=effect_gaussian_nll
+
+defaults:
+  - override /data: dict_dataset
+  - override /model: transformer_encoder_model
+  - override /callbacks: default
+  - override /trainer: default
+  - override /model/scheduler: cosine_annealing_warm_restarts
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["overfit", "single_ion"]
+
+seed: 12345
+
+data:
+  remove_nan_effect: True
+  batch_size: 16
+  # ion_include: 
+ 
+  shuffle: True
+  train_val_splitter:
+    _target_: src.data.components.data_utils.TripleTrainValSplitter
+    remove_nan_effect: True
+    validation_percentage: 0.2
+    ASF_size_percentage: 0.03
+    include_ion:
+    - [22,22]
+    # - [23,22]
+    - [24,22]
+    - [25,22]
+    - [23,23]
+    - [24,23]
+    - [25,23]
+    - [26,23]
+    unseen_ion: 
+    - [23,22]
+
+trainer:
+  min_epochs: 300
+  max_epochs: 2000
+
+model:
+  loss_fn:
+    _target_: src.models.components.loss_function_wrappers.LossFuncWrapper # torch.nn.MSELoss
+    loss_fn: 
+      _target_: torch.nn.L1Loss
+      reduction: sum
+  target_name: "effect"
+
+  model:
+    output_activation: 
+      _target_: torch.nn.ReLU
+    output_size: 1
+    d_model: 32 #${model.CSF_encoders.simple_csf_encoder}  # Directly use the encoder's output_size
+    nhead: 4
+    dim_forward: 32
+    num_layers: 16
+
+  optimizer: 
+    _target_: torch.optim.Adam
+    _partial_: true
+    lr: 0.0005
+    weight_decay: 0.01
+
+  scheduler:
+    _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+    _partial_: true
+    T_0: 20
+    T_mult: 1
+    eta_min: 0.0001
+  # scheduler:
+  #   _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+  #   _partial_: true
+  #   T_0: 30
+  #   T_mult: 1
+  #   eta_min: 0.
+
+
+callbacks:
+  metric_logger:
+    _target_: src.callbacks.metric_loggers.RegressionMetricsLogger
+  early_stopping:
+    patience: 900
+
+# callbacks:
+  # metric_logger:
+    # _target_: src.callbacks.metric_loggers.GaussianNLLMetricsLogger
+  # save_test_inference_to_dict:
+  #   _target_: src.callbacks.save_test_inference_to_dict.GaussianNLLSaveTestInferenceToDict
+  #   save_dir: ${paths.log_dir}
+  #   filename: "effect_gaussian_nll_test_inference"

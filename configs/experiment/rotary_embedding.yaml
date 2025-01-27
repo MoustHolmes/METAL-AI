@@ -1,0 +1,58 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=effect_gaussian_nll
+
+defaults:
+  - override /data: dict_dataset
+  - override /model: transformer_encoder_model
+  - override /callbacks: default
+  - override /trainer: default
+  - override /model/scheduler: cosine_annealing_warm_restarts
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["effect", "transformer_encoder"]
+
+seed: 12345
+
+data:
+  remove_nan_effect: True
+  shuffle: True
+  train_val_splitter:
+    _target_: src.data.components.data_utils.RandomTrainValSplitter
+    validation_percentage : 0.15
+
+trainer:
+  min_epochs: 200
+  max_epochs: 300
+
+model:
+  loss_fn:
+    _target_: src.models.components.loss_function_wrappers.GaussianNLLLossWrapper
+    loss_fn:
+      _target_: torch.nn.GaussianNLLLoss
+      reduction: "sum"
+  target_name: "effect"
+  model:
+    csf_encoder:
+      _target_: src.models.components.CSF_encoders.ExcitaionEmbeddingIonRoPE 
+      output_size: 32
+    output_activation: 
+      _target_: torch.nn.ReLU
+    output_size: 2
+  scheduler:
+    _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+    _partial_: true
+    T_0: 30
+    T_mult: 1
+    eta_min: 0.
+
+callbacks:
+  metric_logger:
+    _target_: src.callbacks.metric_loggers.GaussianNLLMetricsLogger
+  # save_test_inference_to_dict:
+  #   _target_: src.callbacks.save_test_inference_to_dict.GaussianNLLSaveTestInferenceToDict
+  #   save_dir: ${paths.log_dir}
+  #   filename: "effect_gaussian_nll_test_inference"
