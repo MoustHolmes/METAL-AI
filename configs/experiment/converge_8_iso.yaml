@@ -65,7 +65,7 @@ data:
     remove_nan_effect: False
 
 trainer:
-  min_epochs: 3
+  min_epochs: 1000
   max_epochs: 10000
 
 model:

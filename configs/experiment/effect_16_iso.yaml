@@ -13,7 +13,7 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["overfit", "single_ion","converge"]
+tags: ["overfit","effect"]
 
 seed: 12345
 
@@ -96,8 +96,8 @@ data:
     remove_nan_effect: True
 
 trainer:
-  min_epochs: 2000
-  max_epochs: 10000
+  min_epochs: 3000
+  max_epochs: 8000
 
 model:
   loss_fn:
@@ -112,22 +112,24 @@ model:
       _target_: torch.nn.ReLU
     output_size: 1
     d_model: 32 #${model.CSF_encoders.simple_csf_encoder}  # Directly use the encoder's output_size
-    nhead: 4
-    dim_forward: 16
-    num_layers: 16
+    nhead: 8
+    dim_forward: 64
+    num_layers: 8
+    csf_encoder:
+      output_size: 64
 
   optimizer: 
     _target_: torch.optim.Adam
     _partial_: true
-    lr: 0.0005
+    lr: 0.0001
     weight_decay: 0.001
 
   scheduler:
     _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
     _partial_: true
-    T_0: 20
+    T_0: 15
     T_mult: 2
-    eta_min: 0.0001
+    eta_min: 0.0
   # scheduler:
   #   _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
   #   _partial_: true
@@ -139,4 +141,15 @@ callbacks:
   metric_logger:
     _target_: src.callbacks.metric_loggers.RegressionMetricsLogger
   early_stopping:
-    patience: 900
+    patience: 800
+
+    # model.optimizer.lr=0.0001 
+    # model.optimizer.weight_decay=0.001 
+    # model.scheduler.T_0=15 
+    # model.scheduler.T_mult=2 
+    # model.scheduler.eta_min=0.0 
+    # model.model.nhead=8 
+    # model.model.csf_encoder.output_size=64 
+    # model.model.num_layers=8 
+    # model.model.dim_forward=64 
+    # model.model.dropout=0.0

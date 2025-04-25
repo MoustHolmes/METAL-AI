@@ -194,21 +194,21 @@ class DictDataModule(LightningDataModule):
         return [
             DataLoader(
             dataset=self.data_val,
-            batch_sampler=GroupedBatchSampler(self.data_val, batch_size =self.batch_size_per_device, shuffle=self.hparams.shuffle), #data_test,
+            batch_sampler=GroupedBatchSampler(self.data_val, batch_size =2, shuffle=self.hparams.shuffle), #data_test,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             persistent_workers=self.hparams.persistent_workers,
             ),
             DataLoader(
             dataset=self.data_unseen,
-            batch_sampler=GroupedBatchSampler(self.data_unseen, batch_size =self.batch_size_per_device, shuffle=self.hparams.shuffle),
+            batch_sampler=GroupedBatchSampler(self.data_unseen, batch_size =2, shuffle=self.hparams.shuffle),#self.batch_size_per_device
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             persistent_workers=self.hparams.persistent_workers,
             ),
             DataLoader(
             dataset=self.data_large,
-            batch_sampler=GroupedBatchSampler(self.data_large, batch_size = 4, shuffle=self.hparams.shuffle), #self.batch_size_per_device
+            batch_sampler=GroupedBatchSampler(self.data_large, batch_size = 2, shuffle=self.hparams.shuffle), #self.batch_size_per_device
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             persistent_workers=self.hparams.persistent_workers,

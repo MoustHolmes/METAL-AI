@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Tuple
 
 import hydra
+import torch
 import rootutils
 from lightning import LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
@@ -71,11 +72,29 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         log.info("Logging hyperparameters!")
         log_hyperparameters(object_dict)
 
+    checkpoint = torch.load(cfg.ckpt_path)
+    model.load_state_dict(checkpoint["state_dict"], strict=False)
+
+
     log.info("Starting testing!")
-    trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+    trainer.test(model=model, datamodule=datamodule, ) #ckpt_path=cfg.ckpt_path
 
     # for predictions use trainer.predict(...)
     # predictions = trainer.predict(model=model, dataloaders=dataloaders, ckpt_path=cfg.ckpt_path)
+
+    # # Convert the model to TorchScript after evaluation.
+    # model.eval()  # ensure the model is in eval mode
+    # try:
+    #     # Option 1: Use scripting (recommended if your model is fully scriptable)
+    #     scripted_model = torch.jit.script(model)
+    #     # Option 2 (if scripting fails, use tracing):
+    #     # example_input = torch.randn(1, *your_input_shape)
+    #     # scripted_model = torch.jit.trace(model, example_input)
+        
+    #     scripted_model.save("model_scripted.pt")
+    #     log.info("Successfully saved TorchScript model to model_scripted.pt")
+    # except Exception as e:
+    #     log.error("Failed to convert model to TorchScript: %s", e)
 
     metric_dict = trainer.callback_metrics
 

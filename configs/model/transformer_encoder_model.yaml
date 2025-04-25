@@ -5,33 +5,62 @@ defaults:
 
 _target_: src.models.metalAI_module.MetalAILitModule
 
-target_name: 'converged'
-
-model:
-  _target_: src.models.components.Transformer_encoder_model.simple_transformer_encoder_model
-  csf_encoder: #${CSF_encoders.simple_csf_encoder}  # Reference the entire encoder config
-    _target_: src.models.components.CSF_encoders.simple_CSF_encoder 
-    output_size: 4
-  d_model: 32 #${model.CSF_encoders.simple_csf_encoder}  # Directly use the encoder's output_size
-  nhead: 2
-  dim_forward: 16
-  num_layers: 4
-  output_size: 1
-  dropout: 0.00
-  output_activation:
-    _target_: torch.nn.Sigmoid
-
 loss_fn:
   _target_: src.models.components.loss_function_wrappers.LossFuncMaskWrapper # torch.nn.MSELoss
   loss_fn: 
-    _target_: torch.nn.BCELoss
+    _target_: torch.nn.L1Loss
     reduction: sum
+target_name: "effect"
 
-optimizer:
+model:
+  output_activation: 
+    _target_: torch.nn.ReLU
+  output_size: 1
+  d_model: 32 #${model.CSF_encoders.simple_csf_encoder}  # Directly use the encoder's output_size
+  nhead: 8
+  dim_forward: 64
+  num_layers: 8
+  csf_encoder:
+    output_size: 64
+
+optimizer: 
   _target_: torch.optim.Adam
   _partial_: true
-  lr: 0.001
-  weight_decay: 0.01
+  lr: 0.0001
+  weight_decay: 0.001
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+  _partial_: true
+  T_0: 15
+  T_mult: 2
+  eta_min: 0.0
+
+# model:
+#   _target_: src.models.components.Transformer_encoder_model.simple_transformer_encoder_model
+#   csf_encoder: #${CSF_encoders.simple_csf_encoder}  # Reference the entire encoder config
+#     _target_: src.models.components.CSF_encoders.simple_CSF_encoder 
+#     output_size: 4
+#   d_model: 32 #${model.CSF_encoders.simple_csf_encoder}  # Directly use the encoder's output_size
+#   nhead: 2
+#   dim_forward: 16
+#   num_layers: 4
+#   output_size: 1
+#   dropout: 0.00
+#   output_activation:
+#     _target_: torch.nn.Sigmoid
+
+# loss_fn:
+#   _target_: src.models.components.loss_function_wrappers.LossFuncMaskWrapper # torch.nn.MSELoss
+#   loss_fn: 
+#     _target_: torch.nn.BCELoss
+#     reduction: sum
+
+# optimizer:
+#   _target_: torch.optim.Adam
+#   _partial_: true
+#   lr: 0.001
+#   weight_decay: 0.01
 
 # scheduler: cosine_annealing_warm_restarts
   # _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
