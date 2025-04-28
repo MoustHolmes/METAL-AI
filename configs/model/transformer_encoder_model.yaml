@@ -13,6 +13,7 @@ loss_fn:
 target_name: "effect"
 
 model:
+  _target_: src.models.components.Transformer_encoder_model.simple_transformer_encoder_model # Add the target class for the model
   output_activation: 
     _target_: torch.nn.ReLU
   output_size: 1
@@ -21,6 +22,7 @@ model:
   dim_forward: 64
   num_layers: 8
   csf_encoder:
+    _target_: src.models.components.CSF_encoders.simple_CSF_encoder # Add the target class for the CSF encoder
     output_size: 64
 
 optimizer: 
